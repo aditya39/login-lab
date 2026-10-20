@@ -1,26 +1,44 @@
-import { useState, type FormEvent } from 'react';
-import { isValidEmail } from '@login-lab/shared';
+import { useEffect, useState } from 'react';
+import type { User } from '@login-lab/shared';
+import { logout, me } from './api/auth';
+import { LoginForm } from './LoginForm';
 
 export function App() {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setError(isValidEmail(email) ? null : 'Email tidak valid');
+  useEffect(() => {
+    let cancelled = false;
+    me().then((result) => {
+      if (cancelled) return;
+      setUser(result.ok ? result.data : null);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleLogout() {
+    await logout();
+    setUser(null);
   }
 
   return (
     <main>
       <h1>Login Lab</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <button type="submit">Masuk</button>
-      </form>
-      {error && <p role="alert">{error}</p>}
+      {loading ? (
+        <p>Memuat…</p>
+      ) : user ? (
+        <section>
+          <p>Halo, {user.name}</p>
+          <button type="button" onClick={handleLogout}>
+            Keluar
+          </button>
+        </section>
+      ) : (
+        <LoginForm onLogin={setUser} />
+      )}
     </main>
   );
 }
